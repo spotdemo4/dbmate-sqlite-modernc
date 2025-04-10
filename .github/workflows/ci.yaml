@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ["*"]
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            image: ubuntu-latest
+            arch: 386
+          - os: linux
+            image: ubuntu-latest
+            arch: amd64
+          - os: linux
+            image: ubuntu-latest
+            arch: arm
+          - os: linux
+            image: ubuntu-latest
+            arch: arm64
+          - os: macos
+            image: macos-latest
+            arch: amd64
+          - os: macos
+            image: macos-latest
+            arch: arm64
+          - os: windows
+            image: windows-latest
+            arch: amd64
+            setup: choco install sqlite
+
+    name: Test (${{ matrix.os }}/${{ matrix.arch }})
+    runs-on: ${{ matrix.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Setup environment
+        run: ${{ matrix.setup }}
+
+      - run: go mod download
+
+      - name: Run tests
+        run: go test -v ./...
+        env:
+          GOARCH: ${{ matrix.arch }}
+
+  dependabot:
+    name: Dependabot
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - name: Automatically approve dependabot PRs
+        uses: octokit/request-action@v2.x
+        with:
+          route: POST /repos/{owner}/{repo}/pulls/{pull_number}/reviews
+          owner: ${{ github.event.repository.owner.login }}
+          repo: ${{ github.event.repository.name }}
+          pull_number: ${{ github.event.pull_request.number }}
+          event: APPROVE
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
