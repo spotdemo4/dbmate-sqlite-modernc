@@ -47,6 +47,12 @@ jobs:
       - name: Setup environment
         run: ${{ matrix.setup }}
 
+      - name: Setup QEMU
+        if: ${{ matrix.arch != 'amd64' && matrix.os != "macos" }}
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: ${{ matrix.arch }}
+
       - run: go mod download
 
       - name: Run tests
